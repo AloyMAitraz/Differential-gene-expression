@@ -1,0 +1,28 @@
+library(airway)
+library(dplyr) 
+library(tidyverse)
+library(DESeq2)
+library(ggplot2)
+counts_data <- read.delim('GSE60424_raw_counts_GRCh38.p13_NCBI.tsv',row.names = 1)
+counts <- counts_data[, 1:6]
+counts <- counts[rowSums(counts) > 10, ]
+sample_info <- data.frame(
+  row.names = colnames(counts),
+  condition = c('control','control','control','treated','treated','treated')
+)
+dds <- DESeqDataSetFromMatrix(countData = counts,
+                              colData = sample_info,
+                              design = ~ condition)
+
+dds <- DESeq(dds)
+res<-results(dds)
+summary(res)
+res_df <- as.data.frame(res) %>%
+  rownames_to_column("gene") %>%
+  mutate(sig = padj < 0.1 & !is.na(padj))
+ggplot(res_df, aes(x = baseMean, y = log2FoldChange, color = sig)) +
+  geom_point(alpha = 0.6) +
+  scale_x_log10() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  scale_color_manual(values = c("grey60", "red")) +
+  labs(title = "MA Plot", x = "Mean of normalized counts", y = "Log2 Fold Change")
